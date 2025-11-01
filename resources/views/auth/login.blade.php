@@ -14,7 +14,11 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            /* background: linear-gradient(135deg, #f97316 0%, #2ECC71 100%); */
+            background:
+                radial-gradient(1200px 1200px at -10% -10%, rgba(255, 122, 89, .18), transparent 50%),
+                radial-gradient(900px 900px at 110% 0%, rgba(95, 124, 255, .20), transparent 55%),
+                radial-gradient(900px 900px at 120% 120%, rgba(46, 213, 115, .15), transparent 55%),
+                var(--bg);
             min-height: 100vh;
             display: flex;
             align-items: center;
