@@ -348,51 +348,51 @@
 <script>
     const API_BASE_URL = '/api';
 
-    // ====== NEW: Path GeoJSON via asset() ======
-    // Pastikan kamu meletakkan file di: public/indonesia-provinces.json dan public/indonesia-kabupaten.json
-    // Jika nama file kamu "indonesia-kabupten.json", cukup ganti konstanta KAB_GEOJSON_URL di bawah.
-    const PROV_GEOJSON_URL = "{{ asset('indonesia-provinces.json') }}";
-    const KAB_GEOJSON_URL  = "{{ asset('indonesia-kabupaten.json') }}"; // ganti ke "{{ asset('indonesia-kabupten.json') }}" jika filenya memang typo
+    // Path GeoJSON via asset()
+    const PROV_GEOJSON_URL = "{{ asset('indonesia-province.json') }}";
+    const KAB_GEOJSON_URL  = "{{ asset('indonesia-kabupaten.json') }}";
 
     let map, marker, trendChart = null;
     let currentMode = 'price';
     let isAutoFilling = false;
 
-    // ====== NEW: Layer & Choropleth State ======
+    // Layer & Choropleth State
     let provinceLayer = null;
     let kabupatenLayer = null;
     let layerControl = null;
-    let dearthStatsByKabupaten = {}; // { 'KABUPATEN BANDUNG': {avg:1.7, total:12, counts:{LOW:..}} }
 
-    // Util: normalisasi nama utk pencocokan ke GeoJSON
-    const norm = (s) => (s || '')
+    // Index statistik sekarang berbasis REGENGY_ID (bukan nama)
+    let dearthStatsByRegencyId = {}; // { '3201': {avg:..., total:..., counts:{...}, kab:'KABUPATEN BOGOR'} }
+
+    // Util: normalisasi string
+    const norm = (s) => (s ?? '')
         .toString()
         .trim()
         .toUpperCase()
         .replace(/\s+/g,' ')
         .replace(/[^\w\s-]/g,'');
 
-    // Util: peta skor -> warna
-    // 0.00   -> hijau; 0.01–1.00 -> kuning; 1.01–2.00 -> oranye; >2.00 -> merah
+    // Skor -> warna (avg 0..3)
     function scoreToColor(avg){
-        if (avg === 0) return '#2ECC71';         // tidak ada kelangkaan
-        if (avg <= 1)  return '#F1C40F';         // sedikit langka
-        if (avg <= 2)  return '#E67E22';         // cukup langka
-        return '#E74C3C';                        // sangat langka / kritis
+        if (avg === 0) return '#2ECC71';
+        if (avg <= 1)  return '#F1C40F';
+        if (avg <= 2)  return '#E67E22';
+        return '#E74C3C';
     }
 
     // Tooltip isi utk kabupaten
-    function tooltipHtml(name, stats){
+    function tooltipHtml(name, stats, commodityName){
+        const title = commodityName ? `${name} — <small>${commodityName}</small>` : name;
         if (!stats){
             return `
-                <div><strong>${name}</strong><br>
-                Tidak ada laporan kelangkaan.</div>
+                <div><strong>${title}</strong><br>
+                Tidak ada laporan untuk komoditas terpilih.</div>
             `;
         }
         const c = stats.counts || {};
         return `
             <div>
-                <strong>${name}</strong><br>
+                <strong>${title}</strong><br>
                 Rata-rata kelangkaan: <b>${stats.avg.toFixed(2)}</b><br>
                 Total laporan: ${stats.total}<br>
                 <small>
@@ -402,6 +402,40 @@
         `;
     }
 
+    // DETEKTOR JAWA BARAT di GeoJSON
+    function isJawaBaratProvince(feature){
+        const p = feature.properties || {};
+        const cand = [
+            p.name, p.NAMOBJ, p.Propinsi, p.PROVINSI, p.provinsi, p.WADMPR
+        ].map(norm);
+        return cand.includes('JAWA BARAT');
+    }
+    function isKabupatenInJawaBarat(feature){
+        const p = feature.properties || {};
+        const provCand = [
+            p.WADMPR, p.PROVINSI, p.Provinsi, p.provinsi, p.PROV, p.PROVNAME
+        ].map(norm);
+        return provCand.includes('JAWA BARAT');
+    }
+
+    // Ambil KODE KABUPATEN dari GeoJSON → normalisasi ke digit saja, ambil 4 digit pertama
+    function getKabupatenCode(feature){
+        const p = feature.properties || {};
+        let raw =
+            p.KDPKAB || p.KDCBPS || p.KDBBPS || p.KDCPUM || p.KDEBPS || p.KAB_KODE || p.kode || p.KODE_KAB;
+        if (!raw) return null;
+        const justDigits = String(raw).match(/\d+/g);
+        if (!justDigits) return null;
+        const digits = justDigits.join('');
+        return digits.length >= 4 ? digits.slice(0,4) : digits;
+    }
+
+    // Ambil nama kabupaten dari berbagai kemungkinan properti
+    function getKabupatenName(feature){
+        const p = feature.properties || {};
+        return p.WADMKK || p.KABUPATEN || p.KAB_KOTA || p.name || p.NAMA || p.KABKOT || 'Kabupaten/Kota';
+    }
+
     $(function () {
         $('.select2').select2({ theme: 'bootstrap-5', width:'100%', allowClear:true });
 
@@ -409,41 +443,40 @@
         loadProvinces();
         setupEventListeners();
         loadTrendChart();
-
-        // ====== NEW: muat layer geojson & choropleth awal ======
         loadGeoLayers().then(()=> refreshDearthChoropleth());
     });
 
     function initializeMap(){
-        map = L.map('map', { zoomControl: true }).setView([-6.9175, 107.6191], 9);
+        map = L.map('map', { zoomControl: true }).setView([-6.9175, 107.6191], 8);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors', maxZoom: 19
         }).addTo(map);
 
-        // Batas kasar Jawa Barat (opsional; hapus bila seluruh Indonesia)
-        const bounds = L.latLngBounds(L.latLng(-7.8,106.5), L.latLng(-6.0,108.8));
-        map.setMaxBounds(bounds);
-        map.on('drag', () => map.panInsideBounds(bounds, { animate:false }));
-
         map.on('dblclick', handleMapDoubleClick);
 
         if(navigator.geolocation){
             navigator.geolocation.getCurrentPosition(pos=>{
-                map.setView([pos.coords.latitude, pos.coords.longitude], 13);
+                map.setView([pos.coords.latitude, pos.coords.longitude], 10);
             }, ()=>{});
         }
 
         L.control.scale({ metric: true, imperial: false }).addTo(map);
     }
 
-    // ====== NEW: muat GeoJSON provinsi & kabupaten via asset() ======
+    // Muat GeoJSON provinsi & kabupaten, FILTER khusus Jawa Barat
     async function loadGeoLayers(){
-        // Provinces
-        const provResp = await fetch(PROV_GEOJSON_URL, { cache: 'no-cache' });
+        // Provinces (seluruh Indonesia) -> filter ke Jawa Barat
+        const provResp = await fetch(PROV_GEOJSON_URL, { cache: 'default' });
         const provGeo = await provResp.json();
+
+        const provJabar = {
+            type: 'FeatureCollection',
+            features: (provGeo.features || []).filter(isJawaBaratProvince)
+        };
+
         if (provinceLayer) map.removeLayer(provinceLayer);
-        provinceLayer = L.geoJSON(provGeo, {
+        provinceLayer = L.geoJSON(provJabar, {
             style: {
                 color: '#1F6FEB',
                 weight: 1.2,
@@ -451,20 +484,25 @@
             },
             onEachFeature: (f, layer) => {
                 const p = f.properties || {};
-                const name = p.name || p.PROVINSI || p.provinsi || 'Provinsi';
+                const name = p.name || p.NAMOBJ || p.Propinsi || p.WADMPR || p.PROVINSI || 'Jawa Barat';
                 layer.bindTooltip(`<b>${name}</b>`, {sticky:true});
             }
         }).addTo(map);
 
-        // Kabupaten/Kota
-        const kabResp = await fetch(KAB_GEOJSON_URL, { cache: 'no-cache' });
+        // Kabupaten/Kota (seluruh Indonesia) -> filter hanya yang di Jawa Barat
+        const kabResp = await fetch(KAB_GEOJSON_URL, { cache: 'default' });
         const kabGeo = await kabResp.json();
 
+        const kabJabar = {
+            type: 'FeatureCollection',
+            features: (kabGeo.features || []).filter(isKabupatenInJawaBarat)
+        };
+
         if (kabupatenLayer) map.removeLayer(kabupatenLayer);
-        kabupatenLayer = L.geoJSON(kabGeo, {
+        kabupatenLayer = L.geoJSON(kabJabar, {
             style: (feature) => {
-                const kabName = getKabupatenName(feature);
-                const stats = dearthStatsByKabupaten[norm(kabName)];
+                const code = getKabupatenCode(feature);
+                const stats = code ? dearthStatsByRegencyId[code] : null;
                 const color = (currentMode === 'dearth' && stats) ? scoreToColor(stats.avg) : '#BDC3C7';
                 return {
                     color: '#7F8C8D',
@@ -475,9 +513,10 @@
             },
             onEachFeature: (feature, layer) => {
                 const kabName = getKabupatenName(feature);
-                const key = norm(kabName);
-                const stats = dearthStatsByKabupaten[key];
-                layer.bindTooltip(tooltipHtml(kabName, stats), {sticky: true});
+                const code = getKabupatenCode(feature);
+                const stats = code ? dearthStatsByRegencyId[code] : null;
+
+                layer.bindTooltip(tooltipHtml(kabName, stats, getSelectedCommodityName()), {sticky: true});
 
                 layer.on({
                     mouseover: (e) => {
@@ -487,9 +526,9 @@
                         kabupatenLayer.resetStyle(e.target);
                     },
                     click: () => {
-                        const s = dearthStatsByKabupaten[key];
-                        const html = tooltipHtml(kabName, s);
-                        L.popup({maxWidth: 320})
+                        const s = code ? dearthStatsByRegencyId[code] : null;
+                        const html = tooltipHtml(kabName, s, getSelectedCommodityName());
+                        L.popup({maxWidth: 340})
                          .setLatLng(layer.getBounds().getCenter())
                          .setContent(html)
                          .openOn(map);
@@ -503,57 +542,84 @@
         layerControl = L.control.layers(
             {},
             {
-                "Batas Provinsi": provinceLayer,
-                "Choropleth Kabupaten": kabupatenLayer
+                "Batas Provinsi (Jawa Barat)": provinceLayer,
+                "Choropleth Kabupaten (Jawa Barat)": kabupatenLayer
             },
             { collapsed: true }
         ).addTo(map);
 
-        try { map.fitBounds(kabupatenLayer.getBounds(), { padding: [10,10] }); } catch(e){}
+        try {
+            map.fitBounds(kabupatenLayer.getBounds(), { padding: [10,10] });
+        } catch(e){}
     }
 
-    // Ambil nama kabupaten dari berbagai kemungkinan properti
-    function getKabupatenName(feature){
-        const p = feature.properties || {};
-        return p.name || p.NAMA || p.KABUPATEN || p.KAB_KOTA || p.WADMKC || p.KABKOT || 'Kabupaten/Kota';
-    }
-
-    // ====== NEW: Ambil statistik kelangkaan dan perbarui warna kabupaten ======
+    // Ambil statistik kelangkaan & perbarui warna kabupaten (khusus komoditas terpilih)
     async function refreshDearthChoropleth(){
-        // Ambil filter komoditas dari tab aktif (dearth)
         const sel = $('#dearth_commodity_id');
         const commodityId = sel.length ? sel.val() : '';
         const days = 30;
 
-        // Minta data ke API (controller di bawah menghitung avg)
         const res = await fetch(`${API_BASE_URL}/dearth/map?days=${days}&commodity_id=${commodityId||''}`, { cache: 'no-cache' });
         const json = await res.json();
 
         if (json?.success){
-            dearthStatsByKabupaten = {};
+            dearthStatsByRegencyId = {};
             (json.data || []).forEach(item=>{
-                // item.kabupaten: string nama, item.average_severity: number, item.total_reports, item.severity_distribution
-                dearthStatsByKabupaten[norm(item.kabupaten)] = {
+                const key = String(item.regency_id || '').replace(/\D/g,'');
+                dearthStatsByRegencyId[key] = {
                     avg: Number(item.average_severity || 0),
                     total: Number(item.total_reports || 0),
-                    counts: item.severity_distribution || {}
+                    counts: item.severity_distribution || {},
+                    kab: item.kabupaten || null
                 };
             });
 
-            // Restyle choropleth
             if (kabupatenLayer){
                 kabupatenLayer.eachLayer(layer=>{
-                    const kabName = getKabupatenName(layer.feature);
-                    const s = dearthStatsByKabupaten[norm(kabName)];
-                    const color = (currentMode === 'dearth' && s) ? scoreToColor(s.avg) : '#2ECC71'; // jika tidak ada laporan, hijau
+                    const code = getKabupatenCode(layer.feature);
+                    const s = code ? dearthStatsByRegencyId[code] : null;
+                    const color = (currentMode === 'dearth' && s) ? scoreToColor(s.avg) : '#BDC3C7';
                     layer.setStyle({
                         fillColor: color,
-                        fillOpacity: (currentMode === 'dearth') ? 0.55 : 0.15
+                        fillOpacity: (currentMode === 'dearth' && s) ? 0.55 : 0.15
                     });
-                    layer.bindTooltip(tooltipHtml(kabName, s), {sticky:true});
+                    const kabName = getKabupatenName(layer.feature);
+                    layer.bindTooltip(tooltipHtml(kabName, s, getSelectedCommodityName()), {sticky:true});
                 });
             }
+
+            updateLegend();
         }
+    }
+
+    function getSelectedCommodityName(){
+        const $opt = $('#dearth_commodity_id option:selected');
+        const txt = $opt.text ? $opt.text().trim() : '';
+        return txt || null;
+    }
+
+    function updateLegend(){
+        const mode = currentMode;
+        const commodity = getSelectedCommodityName();
+        const $legend = $('#mapLegend');
+        if (!$legend.length) return;
+
+        if (mode !== 'dearth'){
+            $legend.hide();
+            return;
+        }
+
+        $legend.show().html(`
+            <div class="small">
+                <strong>Choropleth Kelangkaan</strong><br>
+                ${commodity ? `<div>Komoditas: <b>${commodity}</b></div>` : ''}
+                <div><span style="display:inline-block;width:10px;height:10px;background:#2ECC71;margin-right:6px;"></span> Avg = 0</div>
+                <div><span style="display:inline-block;width:10px;height:10px;background:#F1C40F;margin-right:6px;"></span> 0 &lt; Avg ≤ 1</div>
+                <div><span style="display:inline-block;width:10px;height:10px;background:#E67E22;margin-right:6px;"></span> 1 &lt; Avg ≤ 2</div>
+                <div><span style="display:inline-block;width:10px;height:10px;background:#E74C3C;margin-right:6px;"></span> Avg &gt; 2</div>
+                <div class="text-muted mt-1">*Avg dihitung dari LOW=0, MED=1, HIGH=2, CRIT=3</div>
+            </div>
+        `);
     }
 
     function handleMapDoubleClick(e){
@@ -682,7 +748,7 @@
                     <small class="text-muted">Jarak ~${d.distance} km dari titik terdekat</small>
                 `);
 
-                showAlert(`${prefix}AlertContainer`, 'success', 'Data lokasi berhasil diambil. Periksa dropdown di atas.');
+                showAlert(`${prefix}AlertContainer`, 'success', 'Data lokasi berhasil diambil. Periksa alamat di bawah.');
             }else{
                 showAlert(`${prefix}AlertContainer`, 'info', 'Lokasi tidak ditemukan. Pilih manual.');
             }
@@ -706,11 +772,10 @@
         $('#priceForm').on('submit', handlePriceFormSubmit);
         $('#dearthForm').on('submit', handleDearthFormSubmit);
 
-        // Jika komoditas kelangkaan diubah, perbarui chart & choropleth
         $('#price_commodity_id').on('change', loadTrendChart);
         $('#dearth_commodity_id').on('change', function(){
             loadTrendChart();
-            refreshDearthChoropleth(); // ====== NEW
+            refreshDearthChoropleth();
         });
     }
 
@@ -784,7 +849,7 @@
             showAlert('dearthAlertContainer','success', res.message || 'Laporan kelangkaan berhasil dikirim.');
             $('#description').val('');
             loadTrendChart();
-            refreshDearthChoropleth(); // ====== NEW: agar warna peta ikut update
+            refreshDearthChoropleth();
         }).fail(xhr=>{
             const msg = xhr.responseJSON?.message || 'Gagal mengirim laporan.';
             showAlert('dearthAlertContainer','danger', msg);
@@ -811,8 +876,7 @@
         if (marker){ map.removeLayer(marker); marker = null; }
 
         loadTrendChart();
-
-        // ====== NEW: saat pindah ke mode kelangkaan, restyle choropleth ======
+        updateLegend();
         refreshDearthChoropleth();
     }
 
@@ -912,6 +976,9 @@
         }, 5000);
     }
 </script>
+
+
+
 
 </body>
 </html>
