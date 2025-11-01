@@ -237,14 +237,7 @@
 <body>
     <div class="login-container">
         <div class="login-left">
-            <div class="logo">PanganCek</div>
-            <div class="logo-subtitle">Cek Kualitas Pangan dengan Mudah</div>
-            <svg class="login-illustration" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="200" cy="150" r="120" fill="rgba(255,255,255,0.2)" />
-                <path d="M150 120 L200 80 L250 120 L230 180 L170 180 Z" fill="white" opacity="0.9" />
-                <circle cx="200" cy="140" r="30" fill="rgba(46,204,113,0.3)" />
-                <rect x="180" y="180" width="40" height="60" rx="5" fill="white" opacity="0.9" />
-            </svg>
+            <img src="{{ asset('2.svg') }}" alt="">
         </div>
 
         <div class="login-right">

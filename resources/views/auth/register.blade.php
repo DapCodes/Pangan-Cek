@@ -218,16 +218,7 @@
 <body>
     <div class="register-container">
         <div class="register-left">
-            <div class="logo">PanganCek</div>
-            <div class="logo-subtitle">Bergabunglah untuk Keamanan Pangan</div>
-            <svg class="register-illustration" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="200" cy="150" r="120" fill="rgba(255,255,255,0.2)" />
-                <path d="M150 100 L250 100 L250 200 L150 200 Z" fill="white" opacity="0.9" rx="10" />
-                <circle cx="175" cy="130" r="15" fill="rgba(249,115,22,0.4)" />
-                <circle cx="225" cy="130" r="15" fill="rgba(249,115,22,0.4)" />
-                <path d="M165 170 Q200 190 235 170" stroke="rgba(249,115,22,0.6)" stroke-width="4" fill="none"
-                    stroke-linecap="round" />
-            </svg>
+            <img src="{{ asset('2.svg') }}" alt="">
         </div>
 
         <div class="register-right">
