@@ -25,7 +25,9 @@ Route::get('/villages/{districtId}', [LocationController::class, 'getVillages'])
 
 Auth::routes();
 
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])
+    ->name('home')
+    ->middleware(['auth', 'role:ADMIN']);
 
 Route::middleware(['auth', 'role:ADMIN'])
     ->prefix('admin')

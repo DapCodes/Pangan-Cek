@@ -12,6 +12,7 @@
     <title>@yield('title', 'PanganCek Admin')</title>
 
     <!-- ===== Fonts & Styles eksternal ===== -->
+    <link rel="icon" href="{{ asset('1.svg') }}" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -304,9 +305,6 @@
                             <li>
                                 <hr class="dropdown-divider" style="border-color:rgba(255,255,255,.15)">
                             </li>
-                            <!-- Jika punya halaman profil, bisa arahkan ke route profil -->
-                            {{-- <li><a class="dropdown-item text-white" href="{{ route('profile.show') }}"><i class="bx bx-cog me-2"></i> Pengaturan Profil</a></li>
-                <li><hr class="dropdown-divider" style="border-color:rgba(255,255,255,.15)"></li> --}}
                             <li>
                                 <!-- Tombol Logout (POST) -->
                                 <form action="{{ route('logout') }}" method="POST" class="px-3">
