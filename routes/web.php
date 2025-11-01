@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\CommodityController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\VerifyReportController;
 use App\Http\Controllers\Admin\VillageController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\MapPageController;
@@ -25,6 +27,20 @@ Auth::routes();
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
 Route::prefix('admin')->name('admin.')->group(function () {
+
+     Route::get('/verify-reports',           [VerifyReportController::class, 'index'])->name('verify-reports.index');
+    Route::get('/verify-reports/data',      [VerifyReportController::class, 'getData'])->name('verify-reports.data');     // ?type=dearth|price
+    Route::post('/verify-reports',          [VerifyReportController::class, 'store'])->name('verify-reports.store');      // approve cepat
+    Route::get('/verify-reports/{id}/edit', [VerifyReportController::class, 'edit'])->name('verify-reports.edit');        // detail modal (?type)
+    Route::put('/verify-reports/{id}',      [VerifyReportController::class, 'update'])->name('verify-reports.update');    // keputusan (?type)
+    Route::delete('/verify-reports/{id}',   [VerifyReportController::class, 'destroy'])->name('verify-reports.destroy');  // opsional (?type)
+
+    Route::get('/users',            [UserController::class, 'index'])->name('users.index');
+    Route::get('/users/data',       [UserController::class, 'getData'])->name('users.data'); // untuk DataTables
+    Route::post('/users',           [UserController::class, 'store'])->name('users.store');
+    Route::get('/users/{id}/edit',  [UserController::class, 'edit'])->name('users.edit');
+    Route::put('/users/{id}',       [UserController::class, 'update'])->name('users.update');
+    Route::delete('/users/{id}',    [UserController::class, 'destroy'])->name('users.destroy');
 
     // Komoditas
     Route::get('/commodities', [CommodityController::class, 'index'])
