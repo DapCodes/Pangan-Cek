@@ -437,56 +437,59 @@
     <script>
         const API_BASE_URL = '/api';
 
-        // ====== Path GeoJSON via asset() ======
-        const PROV_GEOJSON_URL = "{{ asset('indonesia-province.json') }}";
-        const KAB_GEOJSON_URL = "{{ asset('indonesia-kabupaten.json') }}";
+    // ====== NEW: Path GeoJSON via asset() ======
+    // Pastikan kamu meletakkan file di: public/indonesia-provinces.json dan public/indonesia-kabupaten.json
+    // Jika nama file kamu "indonesia-kabupten.json", cukup ganti konstanta KAB_GEOJSON_URL di bawah.
+    const PROV_GEOJSON_URL = "{{ asset('indonesia-provinces.json') }}";
+    const KAB_GEOJSON_URL  = "{{ asset('indonesia-kabupaten.json') }}"; // ganti ke "{{ asset('indonesia-kabupten.json') }}" jika filenya memang typo
 
         let map, marker, trendChart = null;
         let currentMode = 'price';
         let isAutoFilling = false;
 
-        // ====== Layer & Choropleth State ======
-        let provinceLayer = null;
-        let kabupatenLayer = null;
-        let layerControl = null;
-        let dearthStatsByKabupaten = {};
+    // ====== NEW: Layer & Choropleth State ======
+    let provinceLayer = null;
+    let kabupatenLayer = null;
+    let layerControl = null;
+    let dearthStatsByKabupaten = {}; // { 'KABUPATEN BANDUNG': {avg:1.7, total:12, counts:{LOW:..}} }
 
-        // Util: normalisasi nama utk pencocokan ke GeoJSON
-        const norm = (s) => (s || '')
-            .toString()
-            .trim()
-            .toUpperCase()
-            .replace(/\s+/g, ' ')
-            .replace(/[^\w\s-]/g, '');
+    // Util: normalisasi nama utk pencocokan ke GeoJSON
+    const norm = (s) => (s || '')
+        .toString()
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g,' ')
+        .replace(/[^\w\s-]/g,'');
 
-        // Util: peta skor -> warna
-        function scoreToColor(avg) {
-            if (avg === 0) return '#2ECC71';
-            if (avg <= 1) return '#F1C40F';
-            if (avg <= 2) return '#E67E22';
-            return '#E74C3C';
-        }
+    // Util: peta skor -> warna
+    // 0.00   -> hijau; 0.01–1.00 -> kuning; 1.01–2.00 -> oranye; >2.00 -> merah
+    function scoreToColor(avg){
+        if (avg === 0) return '#2ECC71';         // tidak ada kelangkaan
+        if (avg <= 1)  return '#F1C40F';         // sedikit langka
+        if (avg <= 2)  return '#E67E22';         // cukup langka
+        return '#E74C3C';                        // sangat langka / kritis
+    }
 
-        // Tooltip isi utk kabupaten
-        function tooltipHtml(name, stats) {
-            if (!stats) {
-                return `
-            <div><strong>${name}</strong><br>
-            Tidak ada laporan kelangkaan.</div>
-        `;
-            }
-            const c = stats.counts || {};
+    // Tooltip isi utk kabupaten
+    function tooltipHtml(name, stats){
+        if (!stats){
             return `
-        <div>
-            <strong>${name}</strong><br>
-            Rata-rata kelangkaan: <b>${stats.avg.toFixed(2)}</b><br>
-            Total laporan: ${stats.total}<br>
-            <small>
-                LOW: ${c.LOW||0} • MED: ${c.MEDIUM||0} • HIGH: ${c.HIGH||0} • CRIT: ${c.CRITICAL||0}
-            </small>
-        </div>
-    `;
+                <div><strong>${name}</strong><br>
+                Tidak ada laporan kelangkaan.</div>
+            `;
         }
+        const c = stats.counts || {};
+        return `
+            <div>
+                <strong>${name}</strong><br>
+                Rata-rata kelangkaan: <b>${stats.avg.toFixed(2)}</b><br>
+                Total laporan: ${stats.total}<br>
+                <small>
+                    LOW: ${c.LOW||0} • MED: ${c.MEDIUM||0} • HIGH: ${c.HIGH||0} • CRIT: ${c.CRITICAL||0}
+                </small>
+            </div>
+        `;
+    }
 
         $(function() {
             $('.select2').select2({
@@ -495,39 +498,34 @@
                 allowClear: true
             });
 
-            initializeMap();
-            loadProvinces();
-            setupEventListeners();
-            loadTrendChart();
+        initializeMap();
+        loadProvinces();
+        setupEventListeners();
+        loadTrendChart();
 
-            // Muat layer geojson & choropleth awal
-            loadGeoLayers().then(() => refreshDearthChoropleth());
-        });
+        // ====== NEW: muat layer geojson & choropleth awal ======
+        loadGeoLayers().then(()=> refreshDearthChoropleth());
+    });
 
-        function initializeMap() {
-            map = L.map('map', {
-                zoomControl: true
-            }).setView([-6.9175, 107.6191], 9);
+    function initializeMap(){
+        map = L.map('map', { zoomControl: true }).setView([-6.9175, 107.6191], 9);
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors',
-                maxZoom: 19
-            }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors', maxZoom: 19
+        }).addTo(map);
 
-            // Batas kasar Jawa Barat
-            const bounds = L.latLngBounds(L.latLng(-7.8, 106.5), L.latLng(-6.0, 108.8));
-            map.setMaxBounds(bounds);
-            map.on('drag', () => map.panInsideBounds(bounds, {
-                animate: false
-            }));
+        // Batas kasar Jawa Barat (opsional; hapus bila seluruh Indonesia)
+        const bounds = L.latLngBounds(L.latLng(-7.8,106.5), L.latLng(-6.0,108.8));
+        map.setMaxBounds(bounds);
+        map.on('drag', () => map.panInsideBounds(bounds, { animate:false }));
 
             map.on('dblclick', handleMapDoubleClick);
 
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(pos => {
-                    map.setView([pos.coords.latitude, pos.coords.longitude], 13);
-                }, () => {});
-            }
+        if(navigator.geolocation){
+            navigator.geolocation.getCurrentPosition(pos=>{
+                map.setView([pos.coords.latitude, pos.coords.longitude], 13);
+            }, ()=>{});
+        }
 
             L.control.scale({
                 metric: true,
@@ -535,150 +533,124 @@
             }).addTo(map);
         }
 
-        // ====== Muat GeoJSON provinsi & kabupaten (Filter Jawa Barat) ======
-        async function loadGeoLayers() {
-            // Provinces - Filter hanya Jawa Barat
-            const provResp = await fetch(PROV_GEOJSON_URL, {
-                cache: 'no-cache'
-            });
-            const provGeo = await provResp.json();
-            if (provinceLayer) map.removeLayer(provinceLayer);
-            provinceLayer = L.geoJSON(provGeo, {
-                filter: (feature) => {
-                    const p = feature.properties || {};
-                    const provName = (p.name || p.PROVINSI || p.Propinsi || p.provinsi || '').toUpperCase();
-                    return provName.includes('JAWA BARAT') || provName.includes('WEST JAVA');
-                },
-                style: {
-                    color: '#1F6FEB',
-                    weight: 1.2,
-                    fillOpacity: 0.05
-                },
-                onEachFeature: (f, layer) => {
-                    const p = f.properties || {};
-                    const name = p.name || p.PROVINSI || p.Propinsi || p.provinsi || 'Provinsi';
-                    layer.bindTooltip(`<b>${name}</b>`, {
-                        sticky: true
-                    });
-                }
-            }).addTo(map);
+    // ====== NEW: muat GeoJSON provinsi & kabupaten via asset() ======
+    async function loadGeoLayers(){
+        // Provinces
+        const provResp = await fetch(PROV_GEOJSON_URL, { cache: 'no-cache' });
+        const provGeo = await provResp.json();
+        if (provinceLayer) map.removeLayer(provinceLayer);
+        provinceLayer = L.geoJSON(provGeo, {
+            style: {
+                color: '#1F6FEB',
+                weight: 1.2,
+                fillOpacity: 0.05
+            },
+            onEachFeature: (f, layer) => {
+                const p = f.properties || {};
+                const name = p.name || p.PROVINSI || p.provinsi || 'Provinsi';
+                layer.bindTooltip(`<b>${name}</b>`, {sticky:true});
+            }
+        }).addTo(map);
 
-            // Kabupaten/Kota - Filter hanya yang di Jawa Barat
-            const kabResp = await fetch(KAB_GEOJSON_URL, {
-                cache: 'no-cache'
-            });
-            const kabGeo = await kabResp.json();
+        // Kabupaten/Kota
+        const kabResp = await fetch(KAB_GEOJSON_URL, { cache: 'no-cache' });
+        const kabGeo = await kabResp.json();
 
-            if (kabupatenLayer) map.removeLayer(kabupatenLayer);
-            kabupatenLayer = L.geoJSON(kabGeo, {
-                filter: (feature) => {
-                    const p = feature.properties || {};
-                    const provName = (p.WADMPR || p.province || p.provinsi || '').toUpperCase();
-                    return provName.includes('JAWA BARAT') || provName.includes('WEST JAVA');
-                },
-                style: (feature) => {
-                    const kabName = getKabupatenName(feature);
-                    const stats = dearthStatsByKabupaten[norm(kabName)];
-                    const color = (currentMode === 'dearth' && stats) ? scoreToColor(stats.avg) : '#BDC3C7';
-                    return {
-                        color: '#7F8C8D',
-                        weight: 0.8,
-                        fillColor: color,
-                        fillOpacity: (currentMode === 'dearth' && stats) ? 0.55 : 0.15
-                    };
-                },
-                onEachFeature: (feature, layer) => {
-                    const kabName = getKabupatenName(feature);
-                    const key = norm(kabName);
-                    const stats = dearthStatsByKabupaten[key];
-                    layer.bindTooltip(tooltipHtml(kabName, stats), {
-                        sticky: true
-                    });
+        if (kabupatenLayer) map.removeLayer(kabupatenLayer);
+        kabupatenLayer = L.geoJSON(kabGeo, {
+            style: (feature) => {
+                const kabName = getKabupatenName(feature);
+                const stats = dearthStatsByKabupaten[norm(kabName)];
+                const color = (currentMode === 'dearth' && stats) ? scoreToColor(stats.avg) : '#BDC3C7';
+                return {
+                    color: '#7F8C8D',
+                    weight: 0.8,
+                    fillColor: color,
+                    fillOpacity: (currentMode === 'dearth' && stats) ? 0.55 : 0.15
+                };
+            },
+            onEachFeature: (feature, layer) => {
+                const kabName = getKabupatenName(feature);
+                const key = norm(kabName);
+                const stats = dearthStatsByKabupaten[key];
+                layer.bindTooltip(tooltipHtml(kabName, stats), {sticky: true});
 
-                    layer.on({
-                        mouseover: (e) => {
-                            e.target.setStyle({
-                                weight: 2,
-                                color: '#2C3E50'
-                            });
-                        },
-                        mouseout: (e) => {
-                            kabupatenLayer.resetStyle(e.target);
-                        },
-                        click: () => {
-                            const s = dearthStatsByKabupaten[key];
-                            const html = tooltipHtml(kabName, s);
-                            L.popup({
-                                    maxWidth: 320
-                                })
-                                .setLatLng(layer.getBounds().getCenter())
-                                .setContent(html)
-                                .openOn(map);
-                        }
-                    });
-                }
-            }).addTo(map);
+                layer.on({
+                    mouseover: (e) => {
+                        e.target.setStyle({ weight: 2, color: '#2C3E50' });
+                    },
+                    mouseout: (e) => {
+                        kabupatenLayer.resetStyle(e.target);
+                    },
+                    click: () => {
+                        const s = dearthStatsByKabupaten[key];
+                        const html = tooltipHtml(kabName, s);
+                        L.popup({maxWidth: 320})
+                         .setLatLng(layer.getBounds().getCenter())
+                         .setContent(html)
+                         .openOn(map);
+                    }
+                });
+            }
+        }).addTo(map);
 
-            // Layer control
-            if (layerControl) map.removeControl(layerControl);
-            layerControl = L.control.layers({}, {
+        // Layer control
+        if (layerControl) map.removeControl(layerControl);
+        layerControl = L.control.layers(
+            {},
+            {
                 "Batas Provinsi": provinceLayer,
                 "Choropleth Kabupaten": kabupatenLayer
-            }, {
-                collapsed: true
-            }).addTo(map);
+            },
+            { collapsed: true }
+        ).addTo(map);
 
-            try {
-                map.fitBounds(kabupatenLayer.getBounds(), {
-                    padding: [10, 10]
-                });
-            } catch (e) {}
-        }
+        try { map.fitBounds(kabupatenLayer.getBounds(), { padding: [10,10] }); } catch(e){}
+    }
 
-        // Ambil nama kabupaten dari berbagai kemungkinan properti
-        function getKabupatenName(feature) {
-            const p = feature.properties || {};
-            return p.name || p.NAMA || p.KABUPATEN || p.KAB_KOTA || p.WADMKC || p.KABKOT || 'Kabupaten/Kota';
-        }
+    // Ambil nama kabupaten dari berbagai kemungkinan properti
+    function getKabupatenName(feature){
+        const p = feature.properties || {};
+        return p.name || p.NAMA || p.KABUPATEN || p.KAB_KOTA || p.WADMKC || p.KABKOT || 'Kabupaten/Kota';
+    }
 
-        // ====== Ambil statistik kelangkaan dan perbarui warna kabupaten ======
-        async function refreshDearthChoropleth() {
-            const sel = $('#dearth_commodity_id');
-            const commodityId = sel.length ? sel.val() : '';
-            const days = 30;
+    // ====== NEW: Ambil statistik kelangkaan dan perbarui warna kabupaten ======
+    async function refreshDearthChoropleth(){
+        // Ambil filter komoditas dari tab aktif (dearth)
+        const sel = $('#dearth_commodity_id');
+        const commodityId = sel.length ? sel.val() : '';
+        const days = 30;
 
-            const res = await fetch(`${API_BASE_URL}/dearth/map?days=${days}&commodity_id=${commodityId||''}`, {
-                cache: 'no-cache'
+        // Minta data ke API (controller di bawah menghitung avg)
+        const res = await fetch(`${API_BASE_URL}/dearth/map?days=${days}&commodity_id=${commodityId||''}`, { cache: 'no-cache' });
+        const json = await res.json();
+
+        if (json?.success){
+            dearthStatsByKabupaten = {};
+            (json.data || []).forEach(item=>{
+                // item.kabupaten: string nama, item.average_severity: number, item.total_reports, item.severity_distribution
+                dearthStatsByKabupaten[norm(item.kabupaten)] = {
+                    avg: Number(item.average_severity || 0),
+                    total: Number(item.total_reports || 0),
+                    counts: item.severity_distribution || {}
+                };
             });
-            const json = await res.json();
 
-            if (json?.success) {
-                dearthStatsByKabupaten = {};
-                (json.data || []).forEach(item => {
-                    dearthStatsByKabupaten[norm(item.kabupaten)] = {
-                        avg: Number(item.average_severity || 0),
-                        total: Number(item.total_reports || 0),
-                        counts: item.severity_distribution || {}
-                    };
-                });
-
-                // Restyle choropleth
-                if (kabupatenLayer) {
-                    kabupatenLayer.eachLayer(layer => {
-                        const kabName = getKabupatenName(layer.feature);
-                        const s = dearthStatsByKabupaten[norm(kabName)];
-                        const color = (currentMode === 'dearth' && s) ? scoreToColor(s.avg) : '#2ECC71';
-                        layer.setStyle({
-                            fillColor: color,
-                            fillOpacity: (currentMode === 'dearth') ? 0.55 : 0.15
-                        });
-                        layer.bindTooltip(tooltipHtml(kabName, s), {
-                            sticky: true
-                        });
+            // Restyle choropleth
+            if (kabupatenLayer){
+                kabupatenLayer.eachLayer(layer=>{
+                    const kabName = getKabupatenName(layer.feature);
+                    const s = dearthStatsByKabupaten[norm(kabName)];
+                    const color = (currentMode === 'dearth' && s) ? scoreToColor(s.avg) : '#2ECC71'; // jika tidak ada laporan, hijau
+                    layer.setStyle({
+                        fillColor: color,
+                        fillOpacity: (currentMode === 'dearth') ? 0.55 : 0.15
                     });
-                }
+                    layer.bindTooltip(tooltipHtml(kabName, s), {sticky:true});
+                });
             }
         }
+    }
 
         function handleMapDoubleClick(e) {
             const lat = e.latlng.lat.toFixed(6);
@@ -812,17 +784,16 @@
                 <small class="text-muted">Jarak ~${d.distance} km dari titik terdekat</small>
             `);
 
-                    showAlert(`${prefix}AlertContainer`, 'success',
-                        'Data lokasi berhasil diambil. Periksa dropdown di atas.');
-                } else {
-                    showAlert(`${prefix}AlertContainer`, 'info', 'Lokasi tidak ditemukan. Pilih manual.');
-                }
-            } catch (err) {
-                showAlert(`${prefix}AlertContainer`, 'warning', 'Gagal mengambil data administratif. Pilih manual.');
-            } finally {
-                $('#loadingGeocode').hide();
+                showAlert(`${prefix}AlertContainer`, 'success', 'Data lokasi berhasil diambil. Periksa dropdown di atas.');
+            }else{
+                showAlert(`${prefix}AlertContainer`, 'info', 'Lokasi tidak ditemukan. Pilih manual.');
             }
+        }catch(err){
+            showAlert(`${prefix}AlertContainer`, 'warning', 'Gagal mengambil data administratif. Pilih manual.');
+        }finally{
+            $('#loadingGeocode').hide();
         }
+    }
 
         // ========= Event Listeners =========
         function setupEventListeners() {
@@ -855,12 +826,13 @@
             $('#priceForm').on('submit', handlePriceFormSubmit);
             $('#dearthForm').on('submit', handleDearthFormSubmit);
 
-            $('#price_commodity_id').on('change', loadTrendChart);
-            $('#dearth_commodity_id').on('change', function() {
-                loadTrendChart();
-                refreshDearthChoropleth();
-            });
-        }
+        // Jika komoditas kelangkaan diubah, perbarui chart & choropleth
+        $('#price_commodity_id').on('change', loadTrendChart);
+        $('#dearth_commodity_id').on('change', function(){
+            loadTrendChart();
+            refreshDearthChoropleth(); // ====== NEW
+        });
+    }
 
         // ========= Submit Handlers =========
         function handlePriceFormSubmit(e) {
@@ -929,25 +901,21 @@
                 source: 'USER'
             };
 
-            $.ajax({
-                url: `${API_BASE_URL}/dearth/reports`,
-                type: 'POST',
-                data,
-                headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                }
-            }).done(res => {
-                showAlert('dearthAlertContainer', 'success', res.message || 'Laporan kelangkaan berhasil dikirim.');
-                $('#description').val('');
-                loadTrendChart();
-                refreshDearthChoropleth();
-            }).fail(xhr => {
-                const msg = xhr.responseJSON?.message || 'Gagal mengirim laporan.';
-                showAlert('dearthAlertContainer', 'danger', msg);
-            }).always(() => {
-                btn.prop('disabled', false).html('<i class="bx bx-send"></i> Kirim Laporan Kelangkaan');
-            });
-        }
+        $.ajax({
+            url: `${API_BASE_URL}/dearth/reports`, type: 'POST', data,
+            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
+        }).done(res=>{
+            showAlert('dearthAlertContainer','success', res.message || 'Laporan kelangkaan berhasil dikirim.');
+            $('#description').val('');
+            loadTrendChart();
+            refreshDearthChoropleth(); // ====== NEW: agar warna peta ikut update
+        }).fail(xhr=>{
+            const msg = xhr.responseJSON?.message || 'Gagal mengirim laporan.';
+            showAlert('dearthAlertContainer','danger', msg);
+        }).always(()=>{
+            btn.prop('disabled', false).html('<i class="bx bx-send"></i> Kirim Laporan Kelangkaan');
+        });
+    }
 
         // ========= Tab Switch =========
         function switchTab(mode) {
@@ -971,9 +939,11 @@
                 marker = null;
             }
 
-            loadTrendChart();
-            refreshDearthChoropleth();
-        }
+        loadTrendChart();
+
+        // ====== NEW: saat pindah ke mode kelangkaan, restyle choropleth ======
+        refreshDearthChoropleth();
+    }
 
         // ========= Chart =========
         function loadTrendChart() {
@@ -1197,15 +1167,12 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         `);
-            setTimeout(() => {
-                const el = $(`#${containerId} .alert`);
-                if (el.length) {
-                    el.removeClass('show');
-                    setTimeout(() => $(`#${containerId}`).html(''), 300);
-                }
-            }, 5000);
-        }
-    </script>
+        setTimeout(()=>{
+            const el = $(`#${containerId} .alert`);
+            if(el.length){ el.removeClass('show'); setTimeout(()=> $(`#${containerId}`).html(''), 300); }
+        }, 5000);
+    }
+</script>
 
 </body>
 

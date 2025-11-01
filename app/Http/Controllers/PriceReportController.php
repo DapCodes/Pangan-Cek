@@ -23,7 +23,7 @@ class PriceReportController extends Controller
         ]);
 
         $commodity = Commodity::findOrFail($validated['commodity_id']);
-        
+
         $priceReport = PriceReport::create([
             'commodity_id' => $validated['commodity_id'],
             'price' => $validated['price'],
@@ -35,7 +35,7 @@ class PriceReportController extends Controller
             'village_id' => $validated['village_id'] ?? null,
             'quantity_unit' => $commodity->unit,
             'source' => $validated['source'] ?? 'USER',
-            'status' => 'APPROVED',
+            'status' => 'PENDING',
             'reported_at' => now(),
         ]);
 
@@ -48,17 +48,17 @@ class PriceReportController extends Controller
     public function index(Request $request)
     {
         $query = PriceReport::with(['commodity', 'regency']);
-        
+
         if ($request->has('commodity_id')) {
             $query->where('commodity_id', $request->commodity_id);
         }
-        
+
         if ($request->has('days')) {
             $query->where('reported_at', '>=', now()->subDays($request->days));
         }
-        
+
         $reports = $query->orderBy('reported_at', 'desc')->get();
-        
+
         return response()->json([
             'success' => true,
             'data' => $reports
