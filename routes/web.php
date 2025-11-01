@@ -7,8 +7,8 @@ use App\Http\Controllers\MapPageController;
 use App\Http\Controllers\PriceReportController;
 use App\Http\Controllers\TrendController;
 use App\Http\Controllers\DearthReportController;
-use App\Http\Controllers\ReverseGeoCodeController;
 use App\Http\Controllers\LocationController;
+use App\Http\Controllers\ReverseGeocodeController;
 
 
 // Main Page
@@ -80,5 +80,5 @@ Route::prefix('api')->group(function () {
     });
 
     // Reverse Geocoding API
-    Route::get('/reverse-geocode', [ReverseGeoCodeController::class, 'getLocation'])->name('api.reverse.geocode');
+    Route::get('/reverse-geocode', [ReverseGeocodeController::class, 'getLocation'])->name('api.reverse.geocode');
 });
