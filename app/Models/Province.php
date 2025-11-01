@@ -7,19 +7,20 @@ use Illuminate\Database\Eloquent\Model;
 
 class Province extends Model
 {
-    use HasFactory;
+    protected $fillable = ['name', 'code'];
 
-    protected $fillable = [
-        'name',
-        'code',
-    ];
-
-    /**
-     * Relasi ke Regencies
-     */
     public function regencies()
     {
         return $this->hasMany(Regency::class);
     }
 
+    public function priceReports()
+    {
+        return $this->hasMany(PriceReport::class);
+    }
+
+    public function dearthReports()
+    {
+        return $this->hasMany(DearthReport::class);
+    }
 }

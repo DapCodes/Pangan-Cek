@@ -1,72 +1,80 @@
 <?php
 
+// TrendController.php
 namespace App\Http\Controllers;
 
 use App\Models\PriceReport;
+use App\Models\DearthReport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class TrendController extends Controller
 {
     public function trend(Request $request)
     {
-        $validated = $request->validate([
-            'commodity_id' => 'required|exists:commodities,id',
-            'lat' => 'required|numeric|min:-90|max:90',
-            'lng' => 'required|numeric|min:-180|max:180',
-            'radius_km' => 'nullable|numeric|min:1|max:50',
-            'days' => 'nullable|integer|min:1|max:90',
-        ]);
+        $commodityId = $request->input('commodity_id');
+        $days = $request->input('days', 30);
+        $type = $request->input('type', 'price'); // 'price' or 'dearth'
 
-        $radiusKm = $validated['radius_km'] ?? 5;
-        $days = $validated['days'] ?? 30;
-        $lat = $validated['lat'];
-        $lng = $validated['lng'];
-        $commodityId = $validated['commodity_id'];
+        if ($type === 'price') {
+            return $this->getPriceTrend($commodityId, $days);
+        } else {
+            return $this->getDearthTrend($commodityId, $days);
+        }
+    }
 
-        // Tanggal mulai
-        $startDate = Carbon::now()->subDays($days)->startOfDay();
+    private function getPriceTrend($commodityId, $days)
+    {
+        $query = PriceReport::where('reported_at', '>=', now()->subDays($days))
+            ->where('status', 'APPROVED');
 
-        // Query dengan Haversine formula
-        $results = PriceReport::select(
-            DB::raw('DATE(reported_at) as report_date'),
-            DB::raw('AVG(price) as avg_price')
-        )
-            ->where('commodity_id', $commodityId)
-            ->where('status', 'APPROVED')
-            ->where('reported_at', '>=', $startDate)
-            ->whereRaw(
-                "(6371 * ACOS(
-                    COS(RADIANS(?)) * COS(RADIANS(lat)) *
-                    COS(RADIANS(lng) - RADIANS(?)) +
-                    SIN(RADIANS(?)) * SIN(RADIANS(lat))
-                )) <= ?",
-                [$lat, $lng, $lat, $radiusKm]
-            )
-            ->groupBy('report_date')
-            ->orderBy('report_date', 'asc')
-            ->get()
-            ->keyBy('report_date');
-
-        // Generate semua tanggal dalam range
-        $labels = [];
-        $values = [];
-        
-        for ($i = 0; $i < $days; $i++) {
-            $date = Carbon::now()->subDays($days - $i - 1)->format('Y-m-d');
-            $labels[] = $date;
-            
-            if (isset($results[$date])) {
-                $values[] = round($results[$date]->avg_price, 2);
-            } else {
-                $values[] = null; // Tidak ada data
-            }
+        if ($commodityId) {
+            $query->where('commodity_id', $commodityId);
         }
 
+        $trends = $query->select(
+                DB::raw('DATE(reported_at) as date'),
+                DB::raw('AVG(price) as avg_price'),
+                DB::raw('MIN(price) as min_price'),
+                DB::raw('MAX(price) as max_price'),
+                DB::raw('COUNT(*) as total_reports')
+            )
+            ->groupBy('date')
+            ->orderBy('date', 'asc')
+            ->get();
+
         return response()->json([
-            'labels' => $labels,
-            'values' => $values,
+            'success' => true,
+            'type' => 'price',
+            'data' => $trends
+        ]);
+    }
+
+    private function getDearthTrend($commodityId, $days)
+    {
+        $query = DearthReport::where('reported_at', '>=', now()->subDays($days))
+            ->where('status', 'APPROVED');
+
+        if ($commodityId) {
+            $query->where('commodity_id', $commodityId);
+        }
+
+        $trends = $query->select(
+                DB::raw('DATE(reported_at) as date'),
+                DB::raw('COUNT(*) as total_reports'),
+                DB::raw('SUM(CASE WHEN severity = "CRITICAL" THEN 1 ELSE 0 END) as critical_count'),
+                DB::raw('SUM(CASE WHEN severity = "HIGH" THEN 1 ELSE 0 END) as high_count'),
+                DB::raw('SUM(CASE WHEN severity = "MEDIUM" THEN 1 ELSE 0 END) as medium_count'),
+                DB::raw('SUM(CASE WHEN severity = "LOW" THEN 1 ELSE 0 END) as low_count')
+            )
+            ->groupBy('date')
+            ->orderBy('date', 'asc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'type' => 'dearth',
+            'data' => $trends
         ]);
     }
 }
