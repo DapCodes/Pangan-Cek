@@ -48,70 +48,84 @@ class DearthReportController extends Controller
         ], 201);
     }
 
-    public function getDearthMap(Request $request)
-    {
-        $commodityId = $request->input('commodity_id');
-        $days = $request->input('days', 7);
+public function getDearthMap(Request $request)
+{
+    $commodityId = $request->input('commodity_id');
+    $days = (int) $request->input('days', 7);
 
-        $query = DearthReport::where('reported_at', '>=', now()->subDays($days))
-            ->where('status', 'APPROVED');
+    $query = DearthReport::where('reported_at', '>=', now()->subDays($days))
+        ->where('status', 'APPROVED');
 
-        if ($commodityId) {
-            $query->where('commodity_id', $commodityId);
-        }
-
-        $reports = $query->select('kabupaten', 'severity', DB::raw('COUNT(*) as total_reports'))
-            ->groupBy('kabupaten', 'severity')
-            ->get();
-
-        $mapData = [];
-        foreach ($reports->groupBy('kabupaten') as $kabupaten => $items) {
-            $severityCount = [
-                'CRITICAL' => 0,
-                'HIGH' => 0,
-                'MEDIUM' => 0,
-                'LOW' => 0,
-            ];
-
-            foreach ($items as $item) {
-                $severityCount[$item->severity] = $item->total_reports;
-            }
-
-            $totalReports = $items->sum('total_reports');
-            
-            if ($severityCount['CRITICAL'] > 0) {
-                $status = 'Kritis';
-                $color = '#E74C3C';
-            } elseif ($severityCount['HIGH'] > 0) {
-                $status = 'Rawan';
-                $color = '#E67E22';
-            } elseif ($severityCount['MEDIUM'] > 0) {
-                $status = 'Waspada';
-                $color = '#F39C12';
-            } else {
-                $status = 'Aman';
-                $color = '#2ECC71';
-            }
-
-            $mapData[] = [
-                'kabupaten' => $kabupaten,
-                'total_reports' => $totalReports,
-                'severity_distribution' => $severityCount,
-                'status' => $status,
-                'color' => $color,
-            ];
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => $mapData,
-        ]);
+    if ($commodityId) {
+        $query->where('commodity_id', $commodityId);
     }
+
+    // Agregat per kabupaten & severity
+    $reports = $query->select('kabupaten', 'severity', DB::raw('COUNT(*) as total_reports'))
+        ->groupBy('kabupaten', 'severity')
+        ->get();
+
+    $grouped = $reports->groupBy('kabupaten');
+
+    $mapData = [];
+    foreach ($grouped as $kabupaten => $items) {
+        $severityCount = [
+            'CRITICAL' => 0,
+            'HIGH'     => 0,
+            'MEDIUM'   => 0,
+            'LOW'      => 0,
+        ];
+
+        foreach ($items as $item) {
+            $severityCount[$item->severity] = (int) $item->total_reports;
+        }
+
+        $totalReports = array_sum($severityCount);
+
+        // Skor numerik utk rata-rata (LOW=0, MEDIUM=1, HIGH=2, CRITICAL=3)
+        $scoreMap = ['LOW'=>0,'MEDIUM'=>1,'HIGH'=>2,'CRITICAL'=>3];
+        $numerator = 0;
+        foreach ($severityCount as $sev => $cnt) {
+            $numerator += ($scoreMap[$sev] * $cnt);
+        }
+        $averageSeverity = $totalReports > 0 ? $numerator / $totalReports : 0.0;
+
+        // Status/warna ringkas (opsional; masih dipakai komponen lain)
+        if ($severityCount['CRITICAL'] > 0) {
+            $status = 'Kritis';
+            $color = '#E74C3C';
+        } elseif ($severityCount['HIGH'] > 0) {
+            $status = 'Rawan';
+            $color = '#E67E22';
+        } elseif ($severityCount['MEDIUM'] > 0) {
+            $status = 'Waspada';
+            $color = '#F39C12';
+        } else {
+            $status = 'Aman';
+            $color = '#2ECC71';
+        }
+
+        $mapData[] = [
+            'kabupaten' => $kabupaten,
+            'total_reports' => $totalReports,
+            'severity_distribution' => $severityCount,
+            'average_severity' => round($averageSeverity, 4), // dipakai choropleth
+            'status' => $status,
+            'color' => $color,
+        ];
+    }
+
+    return response()->json([
+        'success' => true,
+        'data' => $mapData,
+    ]);
+}
+
 
     public function getRecent(Request $request)
     {
         $limit = $request->input('limit', 10);
-        
+
         $reports = DearthReport::with(['commodity', 'regency'])
             ->where('status', 'APPROVED')
             ->orderBy('reported_at', 'desc')
