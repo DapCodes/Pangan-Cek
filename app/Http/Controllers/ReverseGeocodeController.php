@@ -8,7 +8,7 @@ use App\Models\Regency;
 use App\Models\District;
 use App\Models\Village;
 
-class ReverseGeoCodeController extends Controller
+class ReverseGeocodeController extends Controller
 {
     public function getLocation(Request $request)
     {
