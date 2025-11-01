@@ -1,77 +1,298 @@
-@extends('layouts.app')
+<!DOCTYPE html>
+<html lang="id">
 
-@section('content')
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">{{ __('Register') }}</div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daftar - PanganCek</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-                <div class="card-body">
-                    <form method="POST" action="{{ route('register') }}">
-                        @csrf
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            /* background: linear-gradient(135deg, #2ECC71 0%, #f97316 100%); */
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
 
-                        <div class="row mb-3">
-                            <label for="name" class="col-md-4 col-form-label text-md-end">{{ __('Name') }}</label>
+        .register-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            max-width: 1000px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
 
-                            <div class="col-md-6">
-                                <input id="name" type="text" class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name') }}" required autocomplete="name" autofocus>
+        .register-left {
+            background: linear-gradient(135deg, #2ECC71 0%, #27ae60 100%);
+            padding: 60px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+        }
 
-                                @error('name')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
-                        </div>
+        .logo {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
 
-                        <div class="row mb-3">
-                            <label for="email" class="col-md-4 col-form-label text-md-end">{{ __('Email Address') }}</label>
+        .logo-subtitle {
+            font-size: 18px;
+            margin-bottom: 30px;
+            opacity: 0.95;
+        }
 
-                            <div class="col-md-6">
-                                <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" required autocomplete="email">
+        .register-illustration {
+            width: 100%;
+            max-width: 280px;
+            margin-top: 30px;
+        }
 
-                                @error('email')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
-                        </div>
+        .register-right {
+            padding: 60px 40px;
+        }
 
-                        <div class="row mb-3">
-                            <label for="password" class="col-md-4 col-form-label text-md-end">{{ __('Password') }}</label>
+        .register-header {
+            margin-bottom: 35px;
+        }
 
-                            <div class="col-md-6">
-                                <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="new-password">
+        .register-header h2 {
+            color: #2ECC71;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
 
-                                @error('password')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
-                        </div>
+        .register-header p {
+            color: #666;
+            font-size: 14px;
+        }
 
-                        <div class="row mb-3">
-                            <label for="password-confirm" class="col-md-4 col-form-label text-md-end">{{ __('Confirm Password') }}</label>
+        .form-group {
+            margin-bottom: 20px;
+        }
 
-                            <div class="col-md-6">
-                                <input id="password-confirm" type="password" class="form-control" name="password_confirmation" required autocomplete="new-password">
-                            </div>
-                        </div>
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
 
-                        <div class="row mb-0">
-                            <div class="col-md-6 offset-md-4">
-                                <button type="submit" class="btn btn-primary">
-                                    {{ __('Register') }}
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #2ECC71;
+            box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.1);
+        }
+
+        .form-group input.is-invalid {
+            border-color: #ef4444;
+        }
+
+        .invalid-feedback {
+            color: #ef4444;
+            font-size: 13px;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .btn-register {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #2ECC71 0%, #27ae60 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+            margin-top: 10px;
+        }
+
+        .btn-register:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+        }
+
+        .btn-register:active {
+            transform: translateY(0);
+        }
+
+        .form-footer {
+            margin-top: 25px;
+            text-align: center;
+        }
+
+        .form-footer a {
+            color: #2ECC71;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .form-footer a:hover {
+            color: #27ae60;
+        }
+
+        .divider {
+            margin: 25px 0;
+            text-align: center;
+            position: relative;
+        }
+
+        .divider span {
+            background: white;
+            padding: 0 15px;
+            color: #999;
+            font-size: 14px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #e5e7eb;
+        }
+
+        .login-link {
+            color: #666;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .register-container {
+                grid-template-columns: 1fr;
+            }
+
+            .register-left {
+                padding: 40px 30px;
+            }
+
+            .register-right {
+                padding: 40px 30px;
+            }
+
+            .logo {
+                font-size: 36px;
+            }
+
+            .register-illustration {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="register-container">
+        <div class="register-left">
+            <div class="logo">PanganCek</div>
+            <div class="logo-subtitle">Bergabunglah untuk Keamanan Pangan</div>
+            <svg class="register-illustration" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="200" cy="150" r="120" fill="rgba(255,255,255,0.2)" />
+                <path d="M150 100 L250 100 L250 200 L150 200 Z" fill="white" opacity="0.9" rx="10" />
+                <circle cx="175" cy="130" r="15" fill="rgba(249,115,22,0.4)" />
+                <circle cx="225" cy="130" r="15" fill="rgba(249,115,22,0.4)" />
+                <path d="M165 170 Q200 190 235 170" stroke="rgba(249,115,22,0.6)" stroke-width="4" fill="none"
+                    stroke-linecap="round" />
+            </svg>
+        </div>
+
+        <div class="register-right">
+            <div class="register-header">
+                <h2>Daftar Akun Baru</h2>
+                <p>Isi form di bawah untuk membuat akun</p>
             </div>
+
+            <form method="POST" action="{{ route('register') }}">
+                @csrf
+
+                <div class="form-group">
+                    <label for="name">Nama Lengkap</label>
+                    <input id="name" type="text" class="@error('name') is-invalid @enderror" name="name"
+                        value="{{ old('name') }}" required autocomplete="name" autofocus
+                        placeholder="Masukkan nama lengkap">
+                    @error('name')
+                        <span class="invalid-feedback">
+                            <strong>{{ $message }}</strong>
+                        </span>
+                    @enderror
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Alamat Email</label>
+                    <input id="email" type="email" class="@error('email') is-invalid @enderror" name="email"
+                        value="{{ old('email') }}" required autocomplete="email" placeholder="nama@email.com">
+                    @error('email')
+                        <span class="invalid-feedback">
+                            <strong>{{ $message }}</strong>
+                        </span>
+                    @enderror
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input id="password" type="password" class="@error('password') is-invalid @enderror"
+                        name="password" required autocomplete="new-password" placeholder="Minimal 8 karakter">
+                    @error('password')
+                        <span class="invalid-feedback">
+                            <strong>{{ $message }}</strong>
+                        </span>
+                    @enderror
+                </div>
+
+                <div class="form-group">
+                    <label for="password-confirm">Konfirmasi Password</label>
+                    <input id="password-confirm" type="password" name="password_confirmation" required
+                        autocomplete="new-password" placeholder="Ulangi password">
+                </div>
+
+                <button type="submit" class="btn-register">
+                    Daftar
+                </button>
+
+                <div class="divider">
+                    <span>atau</span>
+                </div>
+
+                <div class="form-footer login-link">
+                    Sudah punya akun? <a href="{{ route('login') }}">Login Sekarang</a>
+                </div>
+            </form>
         </div>
     </div>
-</div>
-@endsection
+</body>
+
+</html>
