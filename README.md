@@ -1,7 +1,7 @@
 # 🥦 PanganCek – Aplikasi Pelaporan Harga Pangan Berbasis Geo-Mapping
 
 **PanganCek** adalah aplikasi berbasis web yang dirancang untuk memudahkan masyarakat dalam melaporkan harga pangan di wilayahnya secara interaktif melalui peta digital.  
-Aplikasi ini menggabungkan teknologi **Laravel 11**, **Leaflet.js**, dan **MySQL** untuk mencatat, menampilkan, serta memantau harga pangan berdasarkan lokasi geografis.
+Aplikasi ini menggabungkan teknologi **Laravel 9**, **Leaflet.js**, dan **MySQL** untuk mencatat, menampilkan, serta memantau harga pangan berdasarkan lokasi geografis.
 
 ---
 
@@ -26,7 +26,7 @@ Aplikasi ini menggabungkan teknologi **Laravel 11**, **Leaflet.js**, dan **MySQL
 
 | Komponen           | Teknologi                             |
 | ------------------ | ------------------------------------- |
-| Framework Backend  | Laravel 11                            |
+| Framework Backend  | Laravel 9                             |
 | Frontend           | Blade Template, Bootstrap, Leaflet.js |
 | Database           | MySQL                                 |
 | Server Lokal       | XAMPP                                 |
