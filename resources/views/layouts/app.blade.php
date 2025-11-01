@@ -258,28 +258,31 @@
             <div class="collapse navbar-collapse" id="topnav">
                 <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
                     <!-- Komoditas -->
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('commodities.index') ? 'active' : '' }}"
-                            href="{{ route('admin.commodities.index') }}">
-                            <i class="bx bx-package me-1"></i> Komoditas
-                        </a>
-                    </li>
+                    {{-- Cek jika route bukan "home", baru tampilkan menu --}}
+                    @if (!request()->routeIs('home'))
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('commodities.index') ? 'active' : '' }}"
+                                href="{{ route('admin.commodities.index') }}">
+                                <i class="bx bx-package me-1"></i> Komoditas
+                            </a>
+                        </li>
 
-                    <!-- Pelaporan / Verifikasi laporan -->
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('admin.verify-reports.index') ? 'active' : '' }}"
-                            href="{{ route('admin.verify-reports.index') }}">
-                            <i class="bx bx-check-shield me-1"></i> Verifikasi Laporan
-                        </a>
-                    </li>
+                        <!-- Pelaporan / Verifikasi laporan -->
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.verify-reports.index') ? 'active' : '' }}"
+                                href="{{ route('admin.verify-reports.index') }}">
+                                <i class="bx bx-check-shield me-1"></i> Verifikasi Laporan
+                            </a>
+                        </li>
 
-                    <!-- User Management -->
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('admin.users.index') ? 'active' : '' }}"
-                            href="{{ route('admin.users.index') }}">
-                            <i class="bx bx-user me-1"></i> User Management
-                        </a>
-                    </li>
+                        <!-- User Management -->
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.users.index') ? 'active' : '' }}"
+                                href="{{ route('admin.users.index') }}">
+                                <i class="bx bx-user me-1"></i> User Management
+                            </a>
+                        </li>
+                    @endif
 
                     <!-- Profile dropdown -->
                     <li class="nav-item dropdown ms-lg-2">
