@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             CommoditySeeder::class,
             ImportSeeder::class,
             RegenciesCoordinateSeeder::class,
+            ReportSeeder::class,
         ]);
     }
 }
