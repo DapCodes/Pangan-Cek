@@ -8,8 +8,6 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>PanganCek — Monitoring Harga & Kelangkaan Sembako Jawa Barat</title>
 
-    <link rel="icon" href="{{ asset('1.svg') }}" type="image/svg+xml">
-
     <!-- ===== Fonts & Styles ===== -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -412,98 +410,11 @@
                 transform: translateY(0)
             }
         }
-
-        /* ===== Dropdown Menu Styling ===== */
-        .dropdown-menu {
-            background: #0a1220 !important;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, .5);
-            padding: 0.5rem 0;
-            margin-top: 0.5rem;
-            border: 1px solid var(--dropdown-border) !important;
-            border-radius: 12px !important;
-        }
-
-        .dropdown-item {
-            padding: 0.6rem 1rem;
-            transition: all .15s ease;
-            border-radius: 8px;
-            margin: 0 0.5rem;
-            cursor: pointer;
-            color: var(--dropdown-item) !important;
-        }
-
-        .dropdown-item:hover {
-            background: var(--dropdown-item-active-bg) !important;
-            color: var(--dropdown-item-active-text) !important;
-        }
-
-        .dropdown-item:focus {
-            background: var(--dropdown-item-active-bg) !important;
-            color: var(--dropdown-item-active-text) !important;
-            outline: none;
-        }
-
-        .dropdown-item:active {
-            background: var(--dropdown-item-active-bg) !important;
-            color: var(--dropdown-item-active-text) !important;
-        }
-
-        /* Dropdown Item Text (non-clickable) */
-        .dropdown-item-text {
-            pointer-events: none;
-            color: var(--control-placeholder) !important;
-        }
-
-        /* Dropdown Header */
-        .dropdown-header {
-            padding: 0.5rem 1rem;
-            margin-bottom: 0.25rem;
-            color: #94a3b8 !important;
-            font-size: 0.75rem !important;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        /* Dropdown Divider */
-        .dropdown-divider {
-            border-color: rgba(255, 255, 255, .15) !important;
-            margin: 0.5rem 0 !important;
-        }
-
-        /* Dropdown Toggle Button */
-        .dropdown-toggle::after {
-            margin-left: 0.5rem;
-            vertical-align: 0.15em;
-        }
-
-        /* Hover effect untuk tombol dropdown */
-        .btn.dropdown-toggle:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 14px 30px rgba(0, 0, 0, .12);
-            opacity: .96;
-        }
-
-        /* Style untuk tombol logout di dalam dropdown */
-        .dropdown-menu form .btn-light {
-            background: linear-gradient(135deg, rgba(255, 122, 89, .15), rgba(95, 124, 255, .15)) !important;
-            border: 1px solid rgba(255, 255, 255, .2) !important;
-            color: #dbeafe !important;
-            transition: all .2s ease;
-            font-weight: 600;
-        }
-
-        .dropdown-menu form .btn-light:hover {
-            background: linear-gradient(135deg, rgba(255, 122, 89, .25), rgba(95, 124, 255, .25)) !important;
-            border-color: rgba(255, 255, 255, .3) !important;
-            color: #fff !important;
-            transform: translateY(-1px);
-        }
     </style>
 </head>
 
 <body>
     <div class="ornament"></div>
-
 
     <!-- ===== Navbar ===== -->
     <nav class="navbar navbar-expand-lg">
@@ -512,7 +423,7 @@
                 <img src="{{ asset('1.svg') }}" alt="Logo" style="width: 43px;">
                 <span>PanganCek</span>
             </a>
-            <ul class="nav nav-pills ms-auto gap-2 align-items-center">
+            <ul class="nav nav-pills ms-auto gap-2">
                 <li class="nav-item">
                     <a id="priceTab" class="btn btn-sm btn-light fw-semibold" href="#"
                         onclick="switchTab('price'); return false;">
@@ -525,24 +436,12 @@
                         <i class='bx bx-error-circle'></i> Laporan Kelangkaan
                     </a>
                 </li>
-
-                @auth
-                    @if (auth()->user()->role === 'ADMIN' || auth()->user()->role === 'OFFICIAL')
-                        <li>
-                            <a class="btn btn-sm btn-outline-light text-white fw-semibold" href="{{ route('home') }}"
-                                style="color: var(--dropdown-item);">
-                                <i class="bx bx-tachometer me-2"></i>Dashboard Admin
-                            </a>
-                        </li>
-                    @endif
-                @else
-                    <!-- Tombol Login jika belum login -->
-                    <li class="nav-item">
-                        <a class="btn btn-sm btn-outline-light text-white fw-semibold" href="{{ route('login') }}">
-                            <i class='bx bx-login'></i> Login
-                        </a>
-                    </li>
-                @endauth
+                <li class="nav-item">
+                    <a id="dearthTab" class="btn btn-sm btn-outline-light text-white fw-semibold"
+                        href="{{ route('login') }}">
+                        <i class='bx bx-login'></i> Login
+                    </a>
+                </li>
             </ul>
         </div>
     </nav>
@@ -571,8 +470,7 @@
                                     style="background:#F39C12"></span><span><strong>Waspada</strong> — Sedikit
                                     langka</span></div>
                             <div class="legend-item"><span class="legend-color"
-                                    style="background:#E67E22"></span><span><strong>Rawan</strong> — Cukup
-                                    langka</span>
+                                    style="background:#E67E22"></span><span><strong>Rawan</strong> — Cukup langka</span>
                             </div>
                             <div class="legend-item"><span class="legend-color"
                                     style="background:#E74C3C"></span><span><strong>Kritis</strong> — Sangat
