@@ -23,12 +23,21 @@ class RegisterController extends Controller
 
     use RegistersUsers;
 
-    /**
-     * Where to redirect users after registration.
+        /**
+     * Override redirect path setelah login.
      *
-     * @var string
+     * @return string
      */
-    protected $redirectTo = '/home';
+    protected function redirectTo()
+    {
+        $user = Auth::user();
+
+        if ($user->role === 'ADMIN') {
+            return '/home'; // ke halaman admin
+        }
+
+        return '/'; // ke halaman peta
+    }
 
     /**
      * Create a new controller instance.
